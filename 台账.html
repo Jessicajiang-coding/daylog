@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>台账</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#fff;--bg2:#f5f5f3;--bg3:#ebebea;
+  --text:#1a1a1a;--text2:#666;--text3:#999;
+  --border:#e0e0de;--border2:#ccc;
+  --accent:#1a1a1a;--accent-text:#fff;
+  --radius:10px;--radius-lg:14px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;
+    --text:#f2f2f7;--text2:#aeaeb2;--text3:#636366;
+    --border:#3a3a3c;--border2:#48484a;
+    --accent:#f2f2f7;--accent-text:#1c1c1e;
+  }
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB',sans-serif;background:var(--bg3);color:var(--text);min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+.app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column}
+
+/* tab bar */
+.tab-bar{display:flex;background:var(--bg);border-bottom:0.5px solid var(--border);position:sticky;top:0;z-index:10}
+.tab-btn{flex:1;padding:14px 8px 12px;font-size:14px;font-weight:500;background:none;border:none;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-0.5px;transition:color .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.tab-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--text)}
+
+/* content */
+.page{display:none;flex:1;overflow-y:auto}
+.page.active{display:block}
+.inner{padding:16px}
+
+/* sub tabs */
+.sub-bar{display:flex;background:var(--bg2);border-radius:10px;padding:3px;gap:2px;margin-bottom:16px}
+.sub-btn{flex:1;padding:8px 4px;font-size:13px;background:none;border:none;border-radius:8px;cursor:pointer;color:var(--text2);font-weight:400;transition:all .15s}
+.sub-btn.active{background:var(--bg);color:var(--text);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+
+.section{display:none}.section.active{display:block}
+
+/* cards */
+.card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+.card-flat{background:var(--bg2);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:10px}
+
+label{font-size:13px;color:var(--text2);display:block;margin-bottom:6px;margin-top:14px}
+label:first-child{margin-top:0}
+input[type=date]{width:100%;font-size:16px;padding:10px 12px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-family:inherit;appearance:none;-webkit-appearance:none}
+textarea{width:100%;font-size:15px;padding:10px 12px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-family:inherit;resize:none;line-height:1.6;height:90px}
+input:focus,textarea:focus{outline:none;border-color:var(--text2)}
+
+.hint{font-size:12px;color:var(--text3);margin-top:8px;line-height:1.6;background:var(--bg2);border-radius:8px;padding:8px 10px}
+
+.btn-save{width:100%;padding:14px;background:var(--accent);color:var(--accent-text);border:none;border-radius:var(--radius);font-size:16px;font-weight:600;cursor:pointer;margin-top:12px;letter-spacing:.02em}
+.btn-save:active{opacity:.8}
+
+/* history */
+.date-label{font-size:12px;font-weight:600;color:var(--text3);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.06em}
+.date-label:first-child{margin-top:0}
+.rec-item{display:flex;align-items:flex-start;gap:8px;padding:12px 16px;border-bottom:0.5px solid var(--border)}
+.rec-item:last-child{border-bottom:none}
+.rec-body{flex:1;min-width:0}
+.rec-time{font-size:12px;color:var(--text3);margin-bottom:3px}
+.rec-text{font-size:14px;color:var(--text);line-height:1.5;word-break:break-all}
+.rec-dur{font-size:12px;color:var(--text2);margin-top:3px}
+.btn-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:22px;line-height:1;padding:0 2px;flex-shrink:0;margin-top:-2px}
+
+/* stats */
+.filter-row{display:flex;gap:6px;margin-bottom:16px}
+.filter-btn{padding:7px 14px;font-size:13px;border:0.5px solid var(--border2);border-radius:20px;background:none;cursor:pointer;color:var(--text2);font-weight:400}
+.filter-btn.active{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
+
+.stat-block{background:var(--bg2);border-radius:var(--radius-lg);margin-bottom:8px;overflow:hidden}
+.stat-l1{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer}
+.stat-l1-name{font-size:15px;font-weight:500}
+.stat-l1-right{display:flex;align-items:center;gap:10px}
+.stat-l1-dur{font-size:14px;color:var(--text2)}
+.chevron{width:16px;height:16px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;transition:transform .2s}
+.chevron.open{transform:rotate(180deg)}
+.stat-children{display:none;border-top:0.5px solid var(--border)}
+.stat-l2{display:flex;justify-content:space-between;align-items:flex-start;padding:11px 16px;border-bottom:0.5px solid var(--border)}
+.stat-l2:last-child{border-bottom:none}
+.stat-l2-left{flex:1}
+.stat-l2-name{font-size:14px;color:var(--text2)}
+.stat-l2-dur{font-size:13px;color:var(--text3);flex-shrink:0;margin-left:12px;margin-top:1px}
+.stat-notes{margin-top:5px}
+.stat-note-item{font-size:12px;color:var(--text3);line-height:1.5;padding:1px 0}
+
+.empty{text-align:center;padding:60px 0;color:var(--text3);font-size:14px}
+
+/* ref panel */
+.ref-toggle{display:flex;align-items:center;gap:5px;margin-top:10px;background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;font-family:inherit;padding:0}
+.ref-toggle svg{width:12px;height:12px;stroke:var(--text3);fill:none;stroke-width:2.5;stroke-linecap:round;transition:transform .2s}
+.ref-toggle svg.open{transform:rotate(180deg)}
+.ref-panel{display:none;margin-top:8px;background:var(--bg2);border-radius:var(--radius);padding:10px 12px}
+.ref-panel.open{display:block}
+.ref-group{margin-bottom:8px}
+.ref-group:last-child{margin-bottom:0}
+.ref-l1{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.05em;margin-bottom:4px}
+.ref-l2s{font-size:13px;color:var(--text2);line-height:1.8}
+.ref-dot{color:var(--border2);margin:0 4px}
+
+/* toast */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(0,0,0,.75);color:#fff;padding:10px 22px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-btn-my" onclick="switchTab('my')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+      我的时间
+    </button>
+    <button class="tab-btn" id="tab-btn-kid" onclick="switchTab('kid')">
+      <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      孩子学习
+    </button>
+  </div>
+
+  <!-- 我的时间 -->
+  <div class="page active" id="page-my">
+    <div class="inner">
+      <div class="sub-bar">
+        <button class="sub-btn active" id="my-sub-record" onclick="switchSub('my','record')">记录</button>
+        <button class="sub-btn" id="my-sub-history" onclick="switchSub('my','history')">历史</button>
+        <button class="sub-btn" id="my-sub-stat" onclick="switchSub('my','stat')">统计</button>
+      </div>
+
+      <div class="section active" id="my-record">
+        <div class="card">
+          <label>日期</label>
+          <input type="date" id="my-date">
+          <label>记录内容</label>
+          <textarea id="my-input" placeholder="9:00-11:00 工作（开会）：与xx公司讨论合同"></textarea>
+          <div class="hint">格式：时间段 一级分类（二级分类）：备注<br>括号和冒号支持中英文，二级和备注可省略</div>
+          <button class="ref-toggle" onclick="toggleRef('my')" id="ref-toggle-my">
+            <svg id="ref-chev-my" viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg>
+            查看分类参考
+          </button>
+          <div class="ref-panel" id="ref-panel-my"></div>
+          <button class="btn-save" onclick="saveRecord('my')">保存</button>
+        </div>
+      </div>
+
+      <div class="section" id="my-history">
+        <div id="my-history-list"></div>
+      </div>
+
+      <div class="section" id="my-stat">
+        <div class="filter-row">
+          <button class="filter-btn active" onclick="setFilter('my','all',this)">全部</button>
+          <button class="filter-btn" onclick="setFilter('my','week',this)">本周</button>
+          <button class="filter-btn" onclick="setFilter('my','month',this)">本月</button>
+        </div>
+        <div id="my-stat-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 孩子学习 -->
+  <div class="page" id="page-kid">
+    <div class="inner">
+      <div class="sub-bar">
+        <button class="sub-btn active" id="kid-sub-record" onclick="switchSub('kid','record')">记录</button>
+        <button class="sub-btn" id="kid-sub-history" onclick="switchSub('kid','history')">历史</button>
+        <button class="sub-btn" id="kid-sub-stat" onclick="switchSub('kid','stat')">统计</button>
+      </div>
+
+      <div class="section active" id="kid-record">
+        <div class="card">
+          <label>日期</label>
+          <input type="date" id="kid-date">
+          <label>记录内容</label>
+          <textarea id="kid-input" placeholder="20:00-20:30 英语（牛津树分级）：L1第一本第3页"></textarea>
+          <div class="hint">格式：时间段 科目（细分）：备注<br>括号和冒号支持中英文，细分和备注可省略</div>
+          <button class="ref-toggle" onclick="toggleRef('kid')" id="ref-toggle-kid">
+            <svg id="ref-chev-kid" viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg>
+            查看分类参考
+          </button>
+          <div class="ref-panel" id="ref-panel-kid"></div>
+          <button class="btn-save" onclick="saveRecord('kid')">保存</button>
+        </div>
+      </div>
+
+      <div class="section" id="kid-history">
+        <div id="kid-history-list"></div>
+      </div>
+
+      <div class="section" id="kid-stat">
+        <div class="filter-row">
+          <button class="filter-btn active" onclick="setFilter('kid','all',this)">全部</button>
+          <button class="filter-btn" onclick="setFilter('kid','week',this)">本周</button>
+          <button class="filter-btn" onclick="setFilter('kid','month',this)">本月</button>
+        </div>
+        <div id="kid-stat-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">已保存 ✓</div>
+
+<script>
+var myFilter='all',kidFilter='all';
+
+function today(){var d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())}
+function p2(n){return n<10?'0'+n:String(n)}
+document.getElementById('my-date').value=today();
+document.getElementById('kid-date').value=today();
+
+function loadData(who){try{var s=localStorage.getItem('tracker-'+who);return s?JSON.parse(s):[]}catch(e){return[]}}
+function saveData(who,data){localStorage.setItem('tracker-'+who,JSON.stringify(data))}
+
+function parseEntry(text){
+  var timeRe=/(\d{1,2}:\d{2})\s*[-－–]\s*(\d{1,2}:\d{2})/;
+  var tm=text.match(timeRe);
+  var start='',end='',duration=0,rest=text;
+  if(tm){
+    start=tm[1];end=tm[2];
+    var sh=parseInt(start),sm=parseInt(start.split(':')[1]);
+    var eh=parseInt(end),em=parseInt(end.split(':')[1]);
+    duration=(eh*60+em)-(sh*60+sm);
+    if(duration<0)duration+=1440;
+    rest=text.slice(tm.index+tm[0].length).trim();
+  }
+  var bracketRe=/[（(]([^）)]*)[）)]/;
+  var bm=rest.match(bracketRe);
+  var l1='',l2='',note='';
+  if(bm){
+    l1=rest.slice(0,bm.index).trim();
+    l2=bm[1].trim();
+    var after=rest.slice(bm.index+bm[0].length).trim();
+    note=after.replace(/^[:：]\s*/,'');
+  }else{
+    var cm=rest.match(/[:：]/);
+    if(cm){l1=rest.slice(0,cm.index).trim();note=rest.slice(cm.index+1).trim();}
+    else{l1=rest.trim();}
+  }
+  return{start:start,end:end,duration:duration,l1:l1,l2:l2,note:note};
+}
+
+function fmtDur(mins){
+  if(!mins)return'';
+  var h=Math.floor(mins/60),m=mins%60;
+  if(h&&m)return h+'h'+m+'min';
+  if(h)return h+'h';
+  return m+'min';
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function saveRecord(who){
+  var date=document.getElementById(who+'-date').value;
+  var text=document.getElementById(who+'-input').value.trim();
+  if(!date||!text)return;
+  var parsed=parseEntry(text);
+  var data=loadData(who);
+  data.unshift({id:Date.now(),date:date,text:text,start:parsed.start,end:parsed.end,duration:parsed.duration,l1:parsed.l1,l2:parsed.l2,note:parsed.note});
+  saveData(who,data);
+  document.getElementById(who+'-input').value='';
+  showToast();
+  if(document.getElementById(who+'-history').classList.contains('active'))renderHistory(who);
+  if(document.getElementById(who+'-stat').classList.contains('active'))renderStat(who);
+}
+
+function deleteRecord(who,id){
+  if(!confirm('确认删除这条记录？'))return;
+  var data=loadData(who).filter(function(r){return r.id!==id});
+  saveData(who,data);
+  renderHistory(who);
+  if(document.getElementById(who+'-stat').classList.contains('active'))renderStat(who);
+}
+
+function renderHistory(who){
+  var data=loadData(who);
+  var el=document.getElementById(who+'-history-list');
+  if(!data.length){el.innerHTML='<div class="empty">暂无记录<br>去记录页添加第一条吧</div>';return;}
+  var byDate={};
+  data.forEach(function(r){if(!byDate[r.date])byDate[r.date]=[];byDate[r.date].push(r)});
+  var dates=Object.keys(byDate).sort(function(a,b){return b.localeCompare(a)});
+  el.innerHTML=dates.map(function(d){
+    return '<div class="date-label">'+d+'</div><div class="card-flat">'+
+      byDate[d].map(function(r){
+        return '<div class="rec-item">'+
+          '<div class="rec-body">'+
+            (r.start&&r.end?'<div class="rec-time">'+esc(r.start)+' – '+esc(r.end)+(r.duration?' · '+fmtDur(r.duration):'')+'</div>':'')+
+            '<div class="rec-text">'+esc(r.text)+'</div>'+
+          '</div>'+
+          '<button class="btn-del" onclick="deleteRecord(\''+who+'\','+r.id+')" aria-label="删除">×</button>'+
+        '</div>'
+      }).join('')+
+    '</div>'
+  }).join('');
+}
+
+function filterData(data,filter){
+  var now=new Date();
+  if(filter==='week'){
+    var day=now.getDay()||7;
+    var mon=new Date(now);mon.setDate(now.getDate()-day+1);
+    var monStr=mon.getFullYear()+'-'+p2(mon.getMonth()+1)+'-'+p2(mon.getDate());
+    return data.filter(function(r){return r.date>=monStr});
+  }
+  if(filter==='month'){
+    var ms=now.getFullYear()+'-'+p2(now.getMonth()+1);
+    return data.filter(function(r){return r.date.indexOf(ms)===0});
+  }
+  return data;
+}
+
+function renderStat(who){
+  var filter=who==='my'?myFilter:kidFilter;
+  var data=filterData(loadData(who),filter);
+  var el=document.getElementById(who+'-stat-list');
+  if(!data.length){el.innerHTML='<div class="empty">该时间段暂无数据</div>';return;}
+  var tree={};
+  data.forEach(function(r){
+    var l1=r.l1||'未分类';
+    var l2=r.l2||'其他';
+    if(!tree[l1])tree[l1]={total:0,children:{}};
+    tree[l1].total+=r.duration||0;
+    if(!tree[l1].children[l2])tree[l1].children[l2]={total:0,items:[]};
+    tree[l1].children[l2].total+=r.duration||0;
+    if(r.note)tree[l1].children[l2].items.push(r);
+  });
+  var sorted=Object.keys(tree).sort(function(a,b){return tree[b].total-tree[a].total});
+  el.innerHTML=sorted.map(function(l1,i){
+    var v=tree[l1];
+    var id='stat-'+who+'-'+i;
+    var l2html=Object.keys(v.children).sort(function(a,b){return v.children[b].total-v.children[a].total}).map(function(l2){
+      var cv=v.children[l2];
+      var notesHtml=cv.items.length?'<div class="stat-notes">'+cv.items.map(function(r){
+        return '<div class="stat-note-item">'+(r.date||'')+(r.start?' '+r.start+'-'+r.end:'')+(r.note?' '+esc(r.note):'')+'</div>'
+      }).join('')+'</div>':'';
+      return '<div class="stat-l2"><div class="stat-l2-left"><div class="stat-l2-name">'+esc(l2)+'</div>'+notesHtml+'</div><div class="stat-l2-dur">'+fmtDur(cv.total)+'</div></div>'
+    }).join('');
+    return '<div class="stat-block">'+
+      '<div class="stat-l1" onclick="toggleStat(\''+id+'\')">'+
+        '<span class="stat-l1-name">'+esc(l1)+'</span>'+
+        '<div class="stat-l1-right">'+
+          '<span class="stat-l1-dur">'+fmtDur(v.total)+'</span>'+
+          '<svg class="chevron" id="chev-'+id+'" viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg>'+
+        '</div>'+
+      '</div>'+
+      '<div class="stat-children" id="'+id+'">'+l2html+'</div>'+
+    '</div>'
+  }).join('');
+}
+
+function toggleStat(id){
+  var el=document.getElementById(id);
+  var chev=document.getElementById('chev-'+id);
+  var open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  if(open)chev.classList.remove('open');else chev.classList.add('open');
+}
+
+function switchTab(who){
+  ['my','kid'].forEach(function(w){
+    document.getElementById('tab-btn-'+w).classList.toggle('active',w===who);
+    document.getElementById('page-'+w).classList.toggle('active',w===who);
+  });
+}
+
+function switchSub(who,sub){
+  ['record','history','stat'].forEach(function(s){
+    document.getElementById(who+'-sub-'+s).classList.toggle('active',s===sub);
+    document.getElementById(who+'-'+s).classList.toggle('active',s===sub);
+  });
+  if(sub==='history')renderHistory(who);
+  if(sub==='stat')renderStat(who);
+}
+
+function setFilter(who,filter,btn){
+  if(who==='my')myFilter=filter;else kidFilter=filter;
+  btn.closest('.filter-row').querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  renderStat(who);
+}
+
+var DEFAULT_REF={
+  my:{
+    '工作':['开会','写材料','交流','汇报','规划'],
+    '学习':['读书','课程','复盘'],
+    '生活':['运动','家务','购物'],
+    '休息':['午休','放松']
+  },
+  kid:{
+    '英语':['牛津树分级','动画片','跟读','绘本'],
+    '数学':['口算','练习册','思维题'],
+    '语文':['阅读','写字','背诵'],
+    '运动':['户外','游泳','球类']
+  }
+};
+
+function buildRefTree(who){
+  var data=loadData(who);
+  if(!data.length)return DEFAULT_REF[who];
+  var tree={};
+  var count={};
+  data.forEach(function(r){
+    var l1=r.l1;if(!l1)return;
+    var l2=r.l2;if(!l2)return;
+    if(!tree[l1])tree[l1]={};
+    if(!tree[l1][l2])tree[l1][l2]=0;
+    tree[l1][l2]++;
+    if(!count[l1])count[l1]=0;
+    count[l1]++;
+  });
+  if(!Object.keys(tree).length)return DEFAULT_REF[who];
+  var sorted={};
+  Object.keys(tree).sort(function(a,b){return count[b]-count[a]}).forEach(function(l1){
+    sorted[l1]=Object.keys(tree[l1]).sort(function(a,b){return tree[l1][b]-tree[l1][a]});
+  });
+  return sorted;
+}
+
+function renderRefPanel(who){
+  var panel=document.getElementById('ref-panel-'+who);
+  var tree=buildRefTree(who);
+  var isDefault=!loadData(who).length;
+  var html=(isDefault?'<div style="font-size:11px;color:var(--text3);margin-bottom:8px">暂无历史记录，以下为示例分类</div>':'')+
+    Object.keys(tree).map(function(l1){
+      var l2s=Array.isArray(tree[l1])?tree[l1]:Object.keys(tree[l1]);
+      return '<div class="ref-group">'+
+        '<div class="ref-l1">'+esc(l1)+'</div>'+
+        '<div class="ref-l2s">'+l2s.map(function(l2,i){
+          return (i>0?'<span class="ref-dot">·</span>':'')+esc(l2)
+        }).join('')+'</div>'+
+      '</div>'
+    }).join('');
+  panel.innerHTML=html;
+}
+
+function toggleRef(who){
+  var panel=document.getElementById('ref-panel-'+who);
+  var chev=document.getElementById('ref-chev-'+who);
+  var open=panel.classList.contains('open');
+  if(!open)renderRefPanel(who);
+  panel.classList.toggle('open',!open);
+  chev.classList.toggle('open',!open);
+}
+
+function showToast(){
+  var t=document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show')},1600);
+}
+</script>
+</body>
+</html>
