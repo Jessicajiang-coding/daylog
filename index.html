@@ -103,6 +103,21 @@ input:focus,textarea:focus{outline:none;border-color:var(--text2)}
 .ref-l2s{font-size:13px;color:var(--text2);line-height:1.8}
 .ref-dot{color:var(--border2);margin:0 4px}
 
+/* io panel */
+.io-toggle{display:flex;align-items:center;gap:5px;margin-top:16px;background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;font-family:inherit;padding:0}
+.io-toggle svg{width:12px;height:12px;stroke:var(--text3);fill:none;stroke-width:2.5;stroke-linecap:round;transition:transform .2s}
+.io-toggle svg.open{transform:rotate(180deg)}
+.io-panel{display:none;margin-top:10px;border-top:0.5px solid var(--border);padding-top:14px}
+.io-panel.open{display:block}
+.io-row{display:flex;gap:8px;margin-bottom:8px}
+.io-row:last-child{margin-bottom:0}
+.btn-io{flex:1;padding:10px 8px;font-size:13px;font-weight:500;border-radius:var(--radius);cursor:pointer;font-family:inherit;text-align:center}
+.btn-export-md{background:var(--bg2);color:var(--text);border:0.5px solid var(--border2)}
+.btn-export-json{background:var(--bg2);color:var(--text);border:0.5px solid var(--border2)}
+.btn-import{background:var(--bg2);color:var(--text2);border:0.5px solid var(--border2)}
+.btn-io:active{opacity:.75}
+.io-label{font-size:11px;color:var(--text3);margin-bottom:6px}
+
 /* toast */
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(0,0,0,.75);color:#fff;padding:10px 22px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:999;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -144,6 +159,22 @@ input:focus,textarea:focus{outline:none;border-color:var(--text2)}
           <div class="ref-panel" id="ref-panel-my"></div>
           <button class="btn-save" onclick="saveRecord('my')">保存</button>
         </div>
+        <button class="io-toggle" onclick="toggleIO('my')" id="io-toggle-my">
+          <svg id="io-chev-my" viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg>
+          导出 / 导入
+        </button>
+        <div class="io-panel" id="io-panel-my">
+          <div class="io-label">导出全部记录</div>
+          <div class="io-row">
+            <button class="btn-io btn-export-md" onclick="exportMD('my')">↓ 导出 MD</button>
+            <button class="btn-io btn-export-json" onclick="exportJSON('my')">↓ 导出 JSON</button>
+          </div>
+          <div class="io-label" style="margin-top:10px">从 JSON 文件导入</div>
+          <div class="io-row">
+            <button class="btn-io btn-import" onclick="triggerImport('my')">↑ 选择文件导入</button>
+          </div>
+          <input type="file" id="import-file-my" accept=".json" style="display:none" onchange="importJSON('my',this)">
+        </div>
       </div>
 
       <div class="section" id="my-history">
@@ -183,6 +214,22 @@ input:focus,textarea:focus{outline:none;border-color:var(--text2)}
           </button>
           <div class="ref-panel" id="ref-panel-kid"></div>
           <button class="btn-save" onclick="saveRecord('kid')">保存</button>
+        </div>
+        <button class="io-toggle" onclick="toggleIO('kid')" id="io-toggle-kid">
+          <svg id="io-chev-kid" viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg>
+          导出 / 导入
+        </button>
+        <div class="io-panel" id="io-panel-kid">
+          <div class="io-label">导出全部记录</div>
+          <div class="io-row">
+            <button class="btn-io btn-export-md" onclick="exportMD('kid')">↓ 导出 MD</button>
+            <button class="btn-io btn-export-json" onclick="exportJSON('kid')">↓ 导出 JSON</button>
+          </div>
+          <div class="io-label" style="margin-top:10px">从 JSON 文件导入</div>
+          <div class="io-row">
+            <button class="btn-io btn-import" onclick="triggerImport('kid')">↑ 选择文件导入</button>
+          </div>
+          <input type="file" id="import-file-kid" accept=".json" style="display:none" onchange="importJSON('kid',this)">
         </div>
       </div>
 
@@ -445,10 +492,82 @@ function toggleRef(who){
   chev.classList.toggle('open',!open);
 }
 
-function showToast(){
+function toggleIO(who){
+  var panel=document.getElementById('io-panel-'+who);
+  var chev=document.getElementById('io-chev-'+who);
+  var open=panel.classList.contains('open');
+  panel.classList.toggle('open',!open);
+  chev.classList.toggle('open',!open);
+}
+
+function dlFile(filename,content,mime){
+  var blob=new Blob([content],{type:mime});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url)},100);
+}
+
+function exportMD(who){
+  var data=loadData(who);
+  if(!data.length){alert('暂无记录可导出');return;}
+  var label=who==='my'?'我的时间':'孩子学习';
+  var byDate={};
+  data.forEach(function(r){if(!byDate[r.date])byDate[r.date]=[];byDate[r.date].push(r)});
+  var dates=Object.keys(byDate).sort(function(a,b){return b.localeCompare(a)});
+  var lines=['# '+label+'\n'];
+  dates.forEach(function(d){
+    lines.push('## '+d+'\n');
+    byDate[d].forEach(function(r){
+      var dur=r.duration?' `'+fmtDur(r.duration)+'`':'';
+      lines.push('- '+r.text+dur);
+    });
+    lines.push('');
+  });
+  var fname='daylog-'+who+'-'+today()+'.md';
+  dlFile(fname,lines.join('\n'),'text/markdown;charset=utf-8');
+}
+
+function exportJSON(who){
+  var data=loadData(who);
+  if(!data.length){alert('暂无记录可导出');return;}
+  var payload=JSON.stringify({who:who,exported:today(),records:data},null,2);
+  var fname='daylog-'+who+'-'+today()+'.json';
+  dlFile(fname,payload,'application/json;charset=utf-8');
+}
+
+function triggerImport(who){
+  document.getElementById('import-file-'+who).value='';
+  document.getElementById('import-file-'+who).click();
+}
+
+function importJSON(who,input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var payload=JSON.parse(e.target.result);
+      var records=payload.records||payload;
+      if(!Array.isArray(records)||!records.length){alert('文件格式不正确或无记录');return;}
+      var mode=confirm('点「确定」= 合并（保留现有+追加导入）\n点「取消」= 覆盖（清空现有，全部替换）');
+      var existing=mode?loadData(who):[];
+      var existIds=new Set(existing.map(function(r){return r.id}));
+      var merged=existing.concat(records.filter(function(r){return !existIds.has(r.id)}));
+      merged.sort(function(a,b){return b.id-a.id});
+      saveData(who,merged);
+      showToast('已导入 '+records.length+' 条');
+      renderHistory(who);
+    }catch(err){alert('导入失败，请检查文件格式');}
+  };
+  reader.readAsText(file,'utf-8');
+}
+
+function showToast(msg){
   var t=document.getElementById('toast');
+  t.textContent=msg||'已保存 ✓';
   t.classList.add('show');
-  setTimeout(function(){t.classList.remove('show')},1600);
+  setTimeout(function(){t.classList.remove('show')},1800);
 }
 </script>
 </body>
